@@ -12,8 +12,11 @@ This guide walks you through deploying the **FastAPI + React + Ollama** applicat
 ## Step 1: Launch EC2 Instance
 1.  **OS**: Ubuntu Server 24.04 LTS (recommended)
 2.  **Instance Type**:
-    *   **Minimum**: `t3.medium` (2 vCPU, 4GB RAM) - LLaMA models require significant RAM.
-    *   **Recommended**: `t3.large` or `g4dn.xlarge` (if GPU acceleration is needed).
+    *   **Recommended**: `c7i-flex.large`
+        *   **Specs**: 2 vCPU, 4GB RAM.
+        *   **Why**: This is a cost-effective "Flex" instance using latest Intel processors. It has enough RAM (4GB) to run LLaMA 3.2 smoothly.
+        *   **Cost**: Cheaper than standard `c7i.large`, offering great performance/price ratio.
+
 3.  **Storage**: At least **20GB gp3** (Ollama models and system dependencies take space).
 4.  **Security Group (Firewall)**:
     *   **SSH (22)** - Your IP (for access)
@@ -41,8 +44,6 @@ source ~/.bashrc
 nvm install 20
 node -v  # Should be v20.x.x or higher
 ```
-
----
 
 ## Step 3: Install and Setup Ollama
 1.  Install Ollama:
