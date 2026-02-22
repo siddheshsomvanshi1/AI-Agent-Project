@@ -1,6 +1,7 @@
-# 🚀 Deployment Guide: AI Agent on AWS EC2
+# 🚀 Deployment Guide: AI Agent on AWS EC2 (Manual Dev Mode)
 
-This guide walks you through deploying the **FastAPI + React + Ollama** application on an AWS EC2 instance.
+This guide walks you through running the **FastAPI + React + Ollama** application on an AWS EC2 instance in **Development Mode**. 
+This method is best for practicing, debugging, and seeing logs in real-time. We will run the backend and frontend in separate terminal sessions.
 
 ## Prerequisites
 - AWS Account
@@ -12,16 +13,14 @@ This guide walks you through deploying the **FastAPI + React + Ollama** applicat
 ## Step 1: Launch EC2 Instance
 1.  **OS**: Ubuntu Server 24.04 LTS (recommended)
 2.  **Instance Type**:
-    *   **Recommended**: `c7i-flex.large`
-        *   **Specs**: 2 vCPU, 4GB RAM.
-        *   **Why**: This is a cost-effective "Flex" instance using latest Intel processors. It has enough RAM (4GB) to run LLaMA 3.2 smoothly.
-        *   **Cost**: Cheaper than standard `c7i.large`, offering great performance/price ratio.
+    *   **Recommended**: `c7i-flex.large` (2 vCPU, 4GB RAM) or similar.
+    *   **Why**: Needs 4GB+ RAM to run LLaMA 3.2 smoothly.
 
-3.  **Storage**: At least **20GB gp3** (Ollama models and system dependencies take space).
+3.  **Storage**: At least **20GB gp3**.
 4.  **Security Group (Firewall)**:
     *   **SSH (22)** - Your IP (for access)
-    *   **HTTP (80)** - Anywhere (for the web app)
-    *   **Custom TCP (5000)** - Anywhere (Optional, for testing backend directly)
+    *   **Custom TCP (5000)** - Anywhere (for Backend API)
+    *   **Custom TCP (5173)** - Anywhere (for Frontend Vite Server)
 
 ---
 
@@ -34,16 +33,18 @@ ssh -i "your-key.pem" ubuntu@your-ec2-ip
 Update system and install required tools:
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-pip python3-venv nodejs npm nginx git
+sudo apt install -y python3-pip python3-venv nodejs npm git
 ```
 
-*Note: If the installed Node.js version is too old (check with `node -v`), install a newer version using nvm:*
+*Note: If Node.js is old, install v20:*
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
 nvm install 20
-node -v  # Should be v20.x.x or higher
+node -v  # Should be v20.x.x
 ```
+
+---
 
 ## Step 3: Install and Setup Ollama
 1.  Install Ollama:
@@ -51,27 +52,24 @@ node -v  # Should be v20.x.x or higher
     curl -fsSL https://ollama.com/install.sh | sh
     ```
 
-2.  Start Ollama service (if not running):
+2.  Start Ollama service:
     ```bash
     sudo systemctl start ollama
-    sudo systemctl enable ollama
     ```
 
 3.  Pull the LLaMA 3.2 model:
     ```bash
     ollama pull llama3.2:latest
     ```
-    *This might take a few minutes depending on internet speed.*
 
 ---
 
-## Step 4: Clone Repository and Setup Backend
+## Step 4: Run Backend (Terminal 1)
 1.  **Clone the repository**:
     ```bash
     git clone <your-github-repo-url>
     cd AI-Agent-Project
     ```
-    *(Replace `<your-github-repo-url>` with your actual repository URL)*
 
 2.  **Setup Python Virtual Environment**:
     ```bash
@@ -84,95 +82,45 @@ node -v  # Should be v20.x.x or higher
     pip install -r requirements.txt
     ```
 
-4.  **Test the Backend**:
+4.  **Start the Backend**:
     ```bash
     python3 app.py
     ```
-    *You should see "Uvicorn running on http://0.0.0.0:5000". Press `Ctrl+C` to stop it.*
-
-5.  **Run Backend in Background**:
-    We will use `nohup` to keep it running even after you disconnect.
-    ```bash
-    nohup python3 app.py > backend.log 2>&1 &
-    ```
-    *To stop it later, use `pkill -f app.py`.*
+    *You should see "Uvicorn running on http://0.0.0.0:5000".*
+    **DO NOT CLOSE THIS TERMINAL.**
 
 ---
 
-## Step 5: Setup Frontend
-1.  **Navigate to frontend directory**:
+## Step 5: Run Frontend (Terminal 2)
+1.  **Open a NEW Terminal/SSH Session**:
+    Connect to the same EC2 instance in a new window.
+
+2.  **Navigate to Frontend**:
     ```bash
-    cd frontend
+    cd AI-Agent-Project/frontend
     ```
 
-2.  **Install Node Dependencies**:
+3.  **Install Dependencies**:
     ```bash
     npm install
     ```
 
-3.  **Build for Production**:
-    This compiles your React code into static HTML/CSS/JS files.
+4.  **Start the Frontend**:
     ```bash
-    npm run build
+    npm run dev -- --host
     ```
-    *This creates a `dist` folder.*
+    *The `--host` flag exposes the app to the internet.*
 
 ---
 
-## Step 6: Configure Nginx (Reverse Proxy)
-We will use Nginx to serve the frontend on port 80 and forward API requests to the backend on port 5000.
+## Step 6: Access Your App
+Open your web browser and enter your EC2 instance's Public IP with port **5173**:
 
-1.  **Edit the default Nginx configuration**:
-    ```bash
-    sudo nano /etc/nginx/sites-available/default
-    ```
-
-2.  **Delete everything and paste the following**:
-    *(Update the root path if your folder name is different)*
-
-    ```nginx
-    server {
-        listen 80;
-        server_name _;
-
-        # Serve Frontend (React Build)
-        location / {
-            root /home/ubuntu/AI-Agent-Project/frontend/dist;
-            index index.html;
-            try_files $uri $uri/ /index.html;
-        }
-
-        # Proxy Backend API
-        location /chat {
-            proxy_pass http://localhost:5000;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
-    }
-    ```
-
-3.  **Save and Exit**: Press `Ctrl+X`, then `Y`, then `Enter`.
-
-4.  **Test and Restart Nginx**:
-    ```bash
-    sudo nginx -t
-    sudo systemctl restart nginx
-    ```
-
----
-
-## Step 7: Access Your App
-Open your web browser and enter your EC2 instance's Public IP:
-`http://<your-ec2-public-ip>`
-
-🎉 **Congratulations! Your AI Agent is now live!**
+`http://<your-ec2-public-ip>:5173`
 
 ---
 
 ## 🛠 Troubleshooting
-*   **Backend not working?** Check logs: `cat ~/AI-Agent-Project/backend.log`
-*   **502 Bad Gateway?** This means Nginx can't talk to the backend. Ensure `app.py` is running (`ps aux | grep python`).
-*   **Permission Denied?** Ensure Nginx can read the files: `sudo chmod -R 755 /home/ubuntu/AI-Agent-Project`
+*   **Site not loading?** Check your **Security Group** rules on AWS. Ensure port **5173** is open to "Anywhere" (0.0.0.0/0).
+*   **Backend error?** Check the logs in **Terminal 1**.
+*   **Frontend error?** Check the logs in **Terminal 2**.
