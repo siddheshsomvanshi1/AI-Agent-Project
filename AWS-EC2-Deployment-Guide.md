@@ -107,9 +107,9 @@ node -v  # Should be v20.x.x
 
 4.  **Start the Frontend**:
     ```bash
-    npm run dev -- --host
+    npm run dev
     ```
-    *The `--host` flag exposes the app to the internet.*
+    *(We have configured vite.config.js to automatically expose the host)*
 
 ---
 
