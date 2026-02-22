@@ -1,6 +1,6 @@
-## 🌸 LLaMA 3.2 AI Chatbot (React + Flask)
+## 🌸 LLaMA 3.2 AI Chatbot (React + FastAPI)
 
-A professional **local AI chatbot** featuring a modern **React** frontend and a robust **Flask** backend, powered by the `llama3.2:latest` model via **Ollama**.
+A professional **local AI chatbot** featuring a modern **React** frontend and a high-performance **FastAPI** backend, powered by the `llama3.2:latest` model via **Ollama**.
 The app runs **fully offline** and features a clean, professional UI with formal color themes.
 
 ---
@@ -9,8 +9,10 @@ The app runs **fully offline** and features a clean, professional UI with formal
 
 *   🦙 **LLaMA 3.2** running locally via Ollama
 *   ⚛️ **React Frontend**: Professional, responsive, and user-friendly interface
-*   🐍 **Flask Backend**: Robust API handling chat streams
-*   ⚡ **Streaming Responses**: Real-time typing effect
+*   ⚡ **FastAPI Backend**: High-performance, async API handling chat streams
+*   📝 **Markdown Support**: Renders code blocks, lists, and formatted text beautifully
+*   🌈 **Syntax Highlighting**: Professional code highlighting for better readability
+*   🌊 **Streaming Responses**: Real-time typing effect
 *   🎨 **Formal Design**: Clean aesthetics suitable for professional use
 *   🔒 **Privacy**: No API keys, no internet required
 
@@ -27,7 +29,7 @@ chatbot/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── app.py              # Flask Backend API
+├── app.py              # FastAPI Backend API
 ├── requirements.txt    # Python Dependencies
 ├── lily.jpg            # Assets (Legacy)
 └── README.md           # Documentation
@@ -94,7 +96,7 @@ Navigate to the frontend directory:
 cd frontend
 ```
 
-Install Node dependencies:
+Install Node dependencies (this installs React, Markdown support, and syntax highlighting):
 ```bash
 npm install
 ```
@@ -111,7 +113,7 @@ You need to run the backend and frontend in separate terminals.
 Make sure your virtual environment is activated.
 ```bash
 # From the project root
-python app.py
+uvicorn app:app --reload --port 5000
 ```
 *Backend runs on http://localhost:5000*
 

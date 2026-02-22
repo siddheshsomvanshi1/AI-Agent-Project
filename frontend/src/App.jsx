@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './index.css'
 
 function App() {
@@ -84,7 +88,34 @@ function App() {
               {msg.role === 'user' ? ' You' : ' Assistant'}
             </div>
             <div className="message-content">
-              {msg.content}
+              {msg.role === 'assistant' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({node, inline, className, children, ...props}) {
+                      const match = /language-(\w+)/.exec(className || '')
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={oneDark}
+                          language={match[1]}
+                          PreTag="div"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      )
+                    }
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                msg.content
+              )}
             </div>
           </div>
         ))}
@@ -98,21 +129,18 @@ function App() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="input-area">
-        <form onSubmit={handleSubmit} className="input-wrapper" style={{ display: 'flex', width: '100%', gap: '10px' }}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here..."
-            disabled={isLoading}
-          />
-          <button type="submit" className="send-btn" disabled={isLoading || !input.trim()}>
-            <Send size={18} />
-            Send
-          </button>
-        </form>
-      </div>
+      <form className="input-area" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+          disabled={isLoading}
+        />
+        <button type="submit" disabled={isLoading || !input.trim()}>
+          <Send size={20} />
+        </button>
+      </form>
     </div>
   )
 }

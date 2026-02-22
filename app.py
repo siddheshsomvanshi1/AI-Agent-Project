@@ -1,28 +1,58 @@
-from flask import Flask, request, jsonify, Response, stream_with_context
-from flask_cors import CORS
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from typing import List, Dict
 import ollama
+import uvicorn
+import os
 
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+app = FastAPI()
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.json
-    user_message = data.get('message', '')
-    history = data.get('history', [])
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Configuration
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+client = ollama.Client(host=OLLAMA_HOST)
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[Dict[str, str]] = []
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    user_message = request.message
+    history = request.history
 
     if not user_message:
-        return jsonify({"error": "No message provided"}), 400
+        raise HTTPException(status_code=400, detail="No message provided")
+
+    # Define system prompt for structured output
+    system_prompt = {
+        "role": "system",
+        "content": (
+            "You are a professional AI assistant. "
+            "When asked for code (like Dockerfiles, Python, etc.), ALWAYS format it clearly using Markdown code blocks (```language ... ```). "
+            "Provide the code first, then a brief explanation. "
+            "Keep the response structured and professional."
+        )
+    }
 
     # Prepare messages for Ollama
-    # History from frontend is expected to be a list of {role, content}
-    # We append the current user message
-    messages = [msg for msg in history if msg.get('role') in ['user', 'assistant']]
+    messages = [system_prompt]
+    messages.extend([msg for msg in history if msg.get('role') in ['user', 'assistant']])
     messages.append({"role": "user", "content": user_message})
 
-    def generate():
+    async def generate():
         try:
-            stream = ollama.chat(
+            stream = client.chat(
                 model='llama3.2:latest',
                 messages=messages,
                 stream=True
@@ -33,7 +63,7 @@ def chat():
         except Exception as e:
             yield f"Error: {str(e)}"
 
-    return Response(stream_with_context(generate()), mimetype='text/plain')
+    return StreamingResponse(generate(), media_type="text/plain")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
